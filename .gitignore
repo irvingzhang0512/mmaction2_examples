@@ -1,0 +1,4 @@
+configs/
+scripts/
+__pycache__/
+data/
