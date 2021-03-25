@@ -1,15 +1,17 @@
 import abc
 import logging
 
-import torch
-from mmcv import Config
-from mmcv.cnn import fuse_conv_bn
-from mmcv.runner.fp16_utils import wrap_fp16_model
-from mmcv.runner import load_checkpoint
-from mmcv.parallel import MMDataParallel
-from mmaction.models import build_model as mmaction2_build_model
+import numpy as np
 import onnx
 import onnxruntime as rt
+import pycuda.driver as cuda
+import tensorrt as trt
+import torch
+from mmaction.models import build_model as mmaction2_build_model
+from mmcv import Config
+from mmcv.cnn import fuse_conv_bn
+from mmcv.runner import load_checkpoint
+from mmcv.runner.fp16_utils import wrap_fp16_model
 
 
 def _convert_batchnorm(module):
@@ -53,6 +55,10 @@ class BaseModel(metaclass=abc.ABCMeta):
     def print_model_info(self):
         pass
 
+    @abc.abstractmethod
+    def build_random_inputs(self, fp16, input_shape):
+        pass
+
 
 class OnnxModel(BaseModel):
 
@@ -82,6 +88,10 @@ class OnnxModel(BaseModel):
     def print_model_info(self):
         print(f"ONNX model: {self.onnx_file_path}")
 
+    def build_random_inputs(self, fp16, input_shape):
+        dtype = np.float16 if fp16 else np.float32
+        return [np.random.randn(*input_shape).astype(dtype)]
+
 
 class MMAction2Model(BaseModel):
 
@@ -101,8 +111,11 @@ class MMAction2Model(BaseModel):
             cfg.model.backbone.pretrained = None
             self.model = mmaction2_build_model(
                 cfg.model, train_cfg=None, test_cfg=cfg.get('test_cfg'))
-        elif isinstance(config, config):
+        elif isinstance(config, dict):
             self.model = mmaction2_build_model(config, None, None)
+            self.config = f"{config['type']}_{config['backbone']['type']}"
+            if config.get("neck"):
+                self.config = f"{self.config}_{config['neck']['type']}"
         else:
             raise ValueError({f"Unknown config {config}"})
 
@@ -112,10 +125,9 @@ class MMAction2Model(BaseModel):
             wrap_fp16_model(self.model)
         if enable_fuse_conv_bn:
             self.model = fuse_conv_bn(self.model)
+        self.model.cuda().eval()
 
     def inference(self, inputs):
-        self.model = MMDataParallel(self.model, device_ids=[0])
-        self.model.eval()
         with torch.no_grad():
             return self.model(return_loss=False, **inputs)
         # torch.cuda.synchronize()
@@ -150,3 +162,50 @@ class MMAction2Model(BaseModel):
             export_params=True,
             keep_initializers_as_inputs=False,
             opset_version=opset_version)
+
+    def build_random_inputs(self, fp16, input_shape):
+        cast = torch.HalfTensor if fp16 else torch.FloatTensor
+        imgs = cast(torch.randn(*input_shape)).cuda()
+        return dict(imgs=imgs)
+
+
+class TensorRTModel:
+
+    def __init__(self, trt_path):
+        self.trt_path = trt_path
+        self.logger = trt.Logger()
+        self.runtime = trt.Runtime(self.logger)
+        with open(trt_path, "rb") as f:
+            self.engine = self.runtime.deserialize_cuda_engine(f.read())
+        self.context = self.engine.create_execution_context()
+        self.stream = cuda.Stream()
+
+    def inference(self, inputs):
+        input_buffer, input_memory, output_buffer, output_memory, bindings = inputs  # noqa
+        cuda.memcpy_htod_async(input_memory, input_buffer, self.stream)
+        self.context.execute_async_v2(
+            bindings=bindings, stream_handle=self.stream.handle)
+        cuda.memcpy_dtoh_async(output_buffer, output_memory, self.stream)
+        self.stream.synchronize()
+
+    def print_model_info(self):
+        print(f"TensorRT model: {self.trt_path}")
+
+    def build_random_inputs(self, fp16, input_shape):
+        bindings = []
+        input_image = np.random.rand(*input_shape)
+        input_buffer = np.ascontiguousarray(input_image)
+
+        for binding in self.engine:
+            binding_idx = self.engine.get_binding_index(binding)
+            size = trt.volume(self.context.get_binding_shape(binding_idx))
+            dtype = trt.nptype(self.engine.get_binding_dtype(binding))
+            if self.engine.binding_is_input(binding):
+                input_memory = cuda.mem_alloc(input_image.nbytes)
+                bindings.append(int(input_memory))
+            else:
+                output_buffer = cuda.pagelocked_empty(size, dtype)
+                output_memory = cuda.mem_alloc(output_buffer.nbytes)
+                bindings.append(int(output_memory))
+
+        return input_buffer, input_memory, output_buffer, output_memory, bindings  # noqa
