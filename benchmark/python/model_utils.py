@@ -4,8 +4,6 @@ import logging
 import numpy as np
 import onnx
 import onnxruntime as rt
-import pycuda.driver as cuda
-import tensorrt as trt
 import torch
 from mmaction.models import build_model as mmaction2_build_model
 from mmcv import Config
@@ -119,13 +117,16 @@ class MMAction2Model(BaseModel):
         else:
             raise ValueError({f"Unknown config {config}"})
 
+        if ckpt_path is not None:
+            load_checkpoint(self.model, ckpt_path, map_location='cpu')
+
         if cudnn_benchmark:
             torch.backends.cudnn.benchmark = True
         if fp16:
             wrap_fp16_model(self.model)
         if enable_fuse_conv_bn:
             self.model = fuse_conv_bn(self.model)
-        self.model.cuda().eval()
+        # self.model.cuda().eval()
 
     def inference(self, inputs):
         with torch.no_grad():
@@ -140,20 +141,19 @@ class MMAction2Model(BaseModel):
     def save_onnx(self,
                   output_file,
                   input_shape,
-                  ckpt_path=None,
                   opset_version=11):
-        self.model.cpu().eval()
+        # self.model.cpu().train()
         self.model = _convert_batchnorm(self.model)
+        self.model.cpu().eval()
         # onnx.export does not support kwargs
         if hasattr(self.model, 'forward_dummy'):
             self.model.forward = self.model.forward_dummy
         else:
             raise NotImplementedError(
                 'Please implement the forward method for exporting.')
-        if ckpt_path is not None:
-            load_checkpoint(self.model, ckpt_path, map_location='cpu')
 
-        input_tensor = torch.randn(input_shape)
+        input_tensor = torch.randn(*input_shape)
+        print(input_shape, input_tensor.size())
 
         torch.onnx.export(
             self.model,
@@ -172,6 +172,8 @@ class MMAction2Model(BaseModel):
 class TensorRTModel:
 
     def __init__(self, trt_path):
+        import pycuda.driver as cuda
+        import tensorrt as trt
         self.trt_path = trt_path
         self.logger = trt.Logger()
         self.runtime = trt.Runtime(self.logger)
@@ -181,6 +183,7 @@ class TensorRTModel:
         self.stream = cuda.Stream()
 
     def inference(self, inputs):
+        import pycuda.driver as cuda
         input_buffer, input_memory, output_buffer, output_memory, bindings = inputs  # noqa
         cuda.memcpy_htod_async(input_memory, input_buffer, self.stream)
         self.context.execute_async_v2(
@@ -192,6 +195,9 @@ class TensorRTModel:
         print(f"TensorRT model: {self.trt_path}")
 
     def build_random_inputs(self, fp16, input_shape):
+        from pycuda import cuda
+        import tensorrt as trt
+
         bindings = []
         input_image = np.random.rand(*input_shape)
         input_buffer = np.ascontiguousarray(input_image)
