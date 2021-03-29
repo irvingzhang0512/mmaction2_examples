@@ -16,7 +16,11 @@ def convert_2d_recognizers(onnx_models_path, input_shape):
 
     for model_type in model_types:
         # build model
-        model_config = build_mmaction2_config(model_type)
+        if 'tsn' in model_type:
+            model_config = build_mmaction2_config(model_type)
+        else:
+            model_config = build_mmaction2_config(
+                model_type, num_segments=input_shape[1])
         model = MMAction2Model(model_config)
         onnx_file_name = model_type + ".onnx"
         onnx_path = os.path.join(onnx_models_path, onnx_file_name)
@@ -51,11 +55,27 @@ def convert(cfg, ckpt, onnx_path, input_shape):
 
 
 if __name__ == '__main__':
-    onnx_models_path = "../data/onnx2"
+    onnx_models_path = "../data/onnx-32"
     if not os.path.exists(onnx_models_path):
         os.makedirs(onnx_models_path)
-    # input_shape_3d = (1, 1, 3, 32, 224, 224)
-    # convert_3d_recognizers(onnx_models_path, input_shape_3d)
+    input_shape_3d = (1, 1, 3, 32, 224, 224)
+    convert_3d_recognizers(onnx_models_path, input_shape_3d)
+    input_shape_2d = (1, 32, 3, 224, 224)
+    convert_2d_recognizers(onnx_models_path, input_shape_2d)
+
+    onnx_models_path = "../data/onnx-16"
+    if not os.path.exists(onnx_models_path):
+        os.makedirs(onnx_models_path)
+    input_shape_3d = (1, 1, 3, 16, 224, 224)
+    convert_3d_recognizers(onnx_models_path, input_shape_3d)
+    input_shape_2d = (1, 16, 3, 224, 224)
+    convert_2d_recognizers(onnx_models_path, input_shape_2d)
+
+    onnx_models_path = "../data/onnx-8"
+    if not os.path.exists(onnx_models_path):
+        os.makedirs(onnx_models_path)
+    input_shape_3d = (1, 1, 3, 8, 224, 224)
+    convert_3d_recognizers(onnx_models_path, input_shape_3d)
     input_shape_2d = (1, 8, 3, 224, 224)
     convert_2d_recognizers(onnx_models_path, input_shape_2d)
 

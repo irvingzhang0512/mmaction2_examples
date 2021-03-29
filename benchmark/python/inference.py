@@ -14,8 +14,14 @@ def _write_to_local(file_path, inference_result, info):
 
 
 def test_2d_pytorch_models(
-        model_types=('tsn_res', 'tsm_mobilenet_v2', 'tsm_res', 'tpn_tsm_res',
-                     'tin_res', 'tam_res'),
+        model_types=(
+            'tsn_res',
+            'tsm_mobilenet_v2',
+            'tsm_res',
+            'tin_res',
+            'tam_res',
+            # 'tpn_tsm_res',
+        ),
         warm_up=10,
         iterations=1000,
         input_shape_2d=(1, 8, 3, 224, 224),
@@ -27,7 +33,11 @@ def test_2d_pytorch_models(
     from mmaction2_model_config_builder import build_mmaction2_config
 
     for model_type in model_types:
-        model_config = build_mmaction2_config(model_type)
+        if 'tsn' in model_type:
+            model_config = build_mmaction2_config(model_type)
+        else:
+            model_config = build_mmaction2_config(
+                model_type, num_segments=input_shape_2d[1])
         inference_result = DoInference(
             model_type="mmaction2",
             model_args=dict(
@@ -43,8 +53,15 @@ def test_2d_pytorch_models(
 
 
 def test_3d_pytorch_models(
-        model_types=('i3d_res', 'slowonly_res', 'tpn_slowonly', 'slowfast_res',
-                     'x3d', 'csn', 'r2plus1d_res'),
+        model_types=(
+            'i3d_res',
+            'slowonly_res',
+            'slowfast_res',
+            'x3d',
+            'csn',
+            'r2plus1d_res',
+            # 'tpn_slowonly',
+        ),
         warm_up=10,
         iterations=1000,
         input_shape_3d=(1, 1, 3, 32, 224, 224),
@@ -94,12 +111,12 @@ def test_2d_onnx_models(
 
 def test_3d_onnx_models(
         onnx_files=(
-            '../data/onnx2/i3d_res.onnx',
-            '../data/onnx2/r2plus1d_res.onnx',
-            '../data/onnx2/slowonly_res.onnx',
-            '../data/onnx2/slowfast_res.onnx',
-            '../data/onnx2/x3d.onnx',
-            '../data/onnx2/tpn_slowonly.onnx',
+            '../data/onnx/i3d_res.onnx',
+            '../data/onnx/r2plus1d_res.onnx',
+            '../data/onnx/slowonly_res.onnx',
+            '../data/onnx/slowfast_res.onnx',
+            '../data/onnx/x3d.onnx',
+            '../data/onnx/tpn_slowonly.onnx',
         ),
         warm_up=10,
         iterations=1000,
@@ -117,11 +134,56 @@ def test_3d_onnx_models(
         _write_to_local(result_file_path, inference_result, info)
 
 
+def test_frames(num_frames, result_file_name, info, warmup, iterations):
+    input_shape_3d = (1, 1, 3, num_frames, 224, 224)
+    input_shape_2d = (1, num_frames, 3, 224, 224)
+    if num_frames != 32:
+        test_2d_pytorch_models(
+            warm_up=warmup,
+            iterations=iterations,
+            fp16=False,
+            input_shape_2d=input_shape_2d,
+            result_file_path=result_file_name,
+            info=info)
+        test_3d_pytorch_models(
+            warm_up=warmup,
+            iterations=iterations,
+            input_shape_3d=input_shape_3d,
+            fp16=False,
+            result_file_path=result_file_name,
+            info=info)
+    test_3d_onnx_models(
+        onnx_files=(
+            f'../data/onnx-{num_frames}/i3d_res.onnx',
+            f'../data/onnx-{num_frames}/r2plus1d_res.onnx',
+            f'../data/onnx-{num_frames}/slowonly_res.onnx',
+            f'../data/onnx-{num_frames}/slowfast_res.onnx',
+            f'../data/onnx-{num_frames}/x3d.onnx',
+            # f'../data/onnx2-{num_frames}/tpn_slowonly.onnx',
+        ),
+        input_shape_3d=input_shape_3d,
+        warm_up=warmup,
+        iterations=iterations,
+        result_file_path=result_file_name,
+        info=info)
+    test_2d_onnx_models(
+        onnx_files=(f'../data/onnx-{num_frames}/tsn_res.onnx',
+                    f'../data/onnx-{num_frames}/tsm_mobilenet_v2.onnx',
+                    f'../data/onnx-{num_frames}/tsm_res.onnx',
+                    f'../data/onnx-{num_frames}/tam_res.onnx'),
+        input_shape_2d=input_shape_2d,
+        warm_up=warmup,
+        iterations=iterations,
+        result_file_path=result_file_name,
+        info=info)
+
+
 if __name__ == '__main__':
-    info = 'v100'
-    test_2d_pytorch_models(
-        fp16=False, result_file_path='./pytorch_2d_v100.txt', info=info)
-    # test_3d_pytorch_models(
-    #     fp16=False, result_file_path='./pytorch_3d_v100.txt', info=info)
-    # test_3d_onnx_models(result_file_path='./onnx_3d_v100.txt', info=info)
-    # test_2d_onnx_models(result_file_path='./onnx_2d_v100.txt', info=info)
+    info = '1080ti'
+    result_file_name = "result.txt"
+    warmup = 100
+    iterations = 500
+
+    test_frames(32, result_file_name, info, warmup, iterations)
+    test_frames(16, result_file_name, info, warmup, iterations)
+    test_frames(8, result_file_name, info, warmup, iterations)
