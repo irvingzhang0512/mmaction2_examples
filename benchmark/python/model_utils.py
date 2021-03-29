@@ -1,15 +1,31 @@
 import abc
 import logging
+import os
+import warnings
 
 import numpy as np
-import onnx
-import onnxruntime as rt
-import torch
-from mmaction.models import build_model as mmaction2_build_model
-from mmcv import Config
-from mmcv.cnn import fuse_conv_bn
-from mmcv.runner import load_checkpoint
-from mmcv.runner.fp16_utils import wrap_fp16_model
+
+try:
+    import torch
+    from mmaction.models import build_model as mmaction2_build_model
+    from mmcv import Config
+    from mmcv.cnn import fuse_conv_bn
+    from mmcv.runner import load_checkpoint
+    from mmcv.runner.fp16_utils import wrap_fp16_model
+except ImportError:
+    warnings.warn("PyTorch models are not available.")
+
+try:
+    import tensorrt as trt
+    from pycuda import cuda
+except ImportError:
+    warnings.warn("PyCUDA or TensorRT is not available.")
+
+try:
+    import onnx
+    import onnxruntime as rt
+except ImportError:
+    warnings.warn("ONNX or ONNXRuntime is not available.")
 
 
 def _convert_batchnorm(module):
@@ -57,6 +73,18 @@ class BaseModel(metaclass=abc.ABCMeta):
     def build_random_inputs(self, fp16, input_shape):
         pass
 
+    @abc.abstractproperty
+    def model_name(self):
+        pass
+
+    @abc.abstractproperty
+    def model_type(self):
+        pass
+
+    @abc.abstractproperty
+    def comments(self):
+        pass
+
 
 class OnnxModel(BaseModel):
 
@@ -65,6 +93,10 @@ class OnnxModel(BaseModel):
         self.onnx_file_path = onnx_file_path
         self.onnx_model = onnx.load(onnx_file_path)
         logging.info(f"Successfully load onnx model {onnx_file_path}")
+
+        # get model name
+        self._model_name = os.path.basename(onnx_file_path)
+        self._model_name = self._model_name[:self._model_name.rfind(".")]
 
         if input_names is None:
             input_all = [node.name for node in self.onnx_model.graph.input]
@@ -84,11 +116,23 @@ class OnnxModel(BaseModel):
         return self.sess.run(None, param_dict)
 
     def print_model_info(self):
-        print(f"ONNX model: {self.onnx_file_path}")
+        print(f"ONNX model: {self.model_name}")
 
     def build_random_inputs(self, fp16, input_shape):
         dtype = np.float16 if fp16 else np.float32
         return [np.random.randn(*input_shape).astype(dtype)]
+
+    @property
+    def model_name(self):
+        return self._model_name
+
+    @property
+    def model_type(self):
+        return "ONNX"
+
+    @property
+    def comments(self):
+        return ""
 
 
 class MMAction2Model(BaseModel):
@@ -105,15 +149,21 @@ class MMAction2Model(BaseModel):
         self.enable_fuse_conv_bn = enable_fuse_conv_bn
 
         if isinstance(config, str):
+            # get model name
+            self._model_name = os.path.basename(config)
+            self._model_name = self._model_name[:self._model_name.rfind(".")]
+
             cfg = Config.fromfile(config)
             cfg.model.backbone.pretrained = None
             self.model = mmaction2_build_model(
                 cfg.model, train_cfg=None, test_cfg=cfg.get('test_cfg'))
         elif isinstance(config, dict):
             self.model = mmaction2_build_model(config, None, None)
-            self.config = f"{config['type']}_{config['backbone']['type']}"
-            if config.get("neck"):
-                self.config = f"{self.config}_{config['neck']['type']}"
+            # get model name
+            self._model_name = (
+                f"{config['type']}_{config['backbone']['type']}_{config['neck']['type']}" # noqa
+                if config.get("neck") else
+                f"{config['type']}_{config['backbone']['type']}")
         else:
             raise ValueError({f"Unknown config {config}"})
 
@@ -126,7 +176,7 @@ class MMAction2Model(BaseModel):
             wrap_fp16_model(self.model)
         if enable_fuse_conv_bn:
             self.model = fuse_conv_bn(self.model)
-        # self.model.cuda().eval()
+        self.model.cuda().eval()
 
     def inference(self, inputs):
         with torch.no_grad():
@@ -134,14 +184,11 @@ class MMAction2Model(BaseModel):
         # torch.cuda.synchronize()
 
     def print_model_info(self):
-        print(f"PyTorch model: {self.config}, fp16 {self.fp16}, "
+        print(f"PyTorch model: {self.model_name}, fp16 {self.fp16}, "
               f"cudnn {self.cudnn_benchmark}, "
               f"fuse_conv_bn {self.enable_fuse_conv_bn}")
 
-    def save_onnx(self,
-                  output_file,
-                  input_shape,
-                  opset_version=11):
+    def save_onnx(self, output_file, input_shape, opset_version=11):
         # self.model.cpu().train()
         self.model = _convert_batchnorm(self.model)
         self.model.cpu().eval()
@@ -168,12 +215,28 @@ class MMAction2Model(BaseModel):
         imgs = cast(torch.randn(*input_shape)).cuda()
         return dict(imgs=imgs)
 
+    @property
+    def model_name(self):
+        return self._model_name
+
+    @property
+    def model_type(self):
+        return "PyTorch"
+
+    @property
+    def comments(self):
+        return (f"fp16 {self.fp16} "
+                f"cudnn {self.cudnn_benchmark} "
+                f"fuse_conv_bn {self.enable_fuse_conv_bn}")
+
 
 class TensorRTModel:
 
     def __init__(self, trt_path):
-        import pycuda.driver as cuda
-        import tensorrt as trt
+        # get model name
+        self._model_name = os.path.basename(trt_path)
+        self._model_name = self._model_name[:self._model_name.rfind(".")]
+
         self.trt_path = trt_path
         self.logger = trt.Logger()
         self.runtime = trt.Runtime(self.logger)
@@ -195,8 +258,6 @@ class TensorRTModel:
         print(f"TensorRT model: {self.trt_path}")
 
     def build_random_inputs(self, fp16, input_shape):
-        from pycuda import cuda
-        import tensorrt as trt
 
         bindings = []
         input_image = np.random.rand(*input_shape)
@@ -215,3 +276,15 @@ class TensorRTModel:
                 bindings.append(int(output_memory))
 
         return input_buffer, input_memory, output_buffer, output_memory, bindings  # noqa
+
+    @property
+    def model_name(self):
+        return self._model_name
+
+    @property
+    def model_type(self):
+        return "TensorRT"
+
+    @property
+    def comments(self):
+        return ""
