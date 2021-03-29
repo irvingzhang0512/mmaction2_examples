@@ -137,21 +137,20 @@ def test_3d_onnx_models(
 def test_frames(num_frames, result_file_name, info, warmup, iterations):
     input_shape_3d = (1, 1, 3, num_frames, 224, 224)
     input_shape_2d = (1, num_frames, 3, 224, 224)
-    if num_frames != 32:
-        test_2d_pytorch_models(
-            warm_up=warmup,
-            iterations=iterations,
-            fp16=False,
-            input_shape_2d=input_shape_2d,
-            result_file_path=result_file_name,
-            info=info)
-        test_3d_pytorch_models(
-            warm_up=warmup,
-            iterations=iterations,
-            input_shape_3d=input_shape_3d,
-            fp16=False,
-            result_file_path=result_file_name,
-            info=info)
+    test_2d_pytorch_models(
+        warm_up=warmup,
+        iterations=iterations,
+        fp16=False,
+        input_shape_2d=input_shape_2d,
+        result_file_path=result_file_name,
+        info=info)
+    test_3d_pytorch_models(
+        warm_up=warmup,
+        iterations=iterations,
+        input_shape_3d=input_shape_3d,
+        fp16=False,
+        result_file_path=result_file_name,
+        info=info)
     test_3d_onnx_models(
         onnx_files=(
             f'../data/onnx-{num_frames}/i3d_res.onnx',
@@ -182,7 +181,7 @@ if __name__ == '__main__':
     info = '1080ti'
     result_file_name = "result.txt"
     warmup = 100
-    iterations = 500
+    iterations = 2000
 
     test_frames(32, result_file_name, info, warmup, iterations)
     test_frames(16, result_file_name, info, warmup, iterations)
