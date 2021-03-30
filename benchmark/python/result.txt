@@ -58,3 +58,103 @@ ONNX,tsn_res,8,1,,15,15,1080ti
 ONNX,tsm_mobilenet_v2,8,1,,7,7,1080ti
 ONNX,tsm_res,8,1,,20,20,1080ti
 ONNX,tam_res,8,1,,19,19,1080ti
+PyTorch,TSN_r50,32,1,fp16 False cudnn False fuse_conv_bn False,31,31,v100
+PyTorch,TSM_MobileNetV2,32,1,fp16 False cudnn False fuse_conv_bn False,10,10,v100
+PyTorch,TSM_r50,32,1,fp16 False cudnn False fuse_conv_bn False,34,34,v100
+PyTorch,TIN_r50,32,1,fp16 False cudnn False fuse_conv_bn False,72,72,v100
+PyTorch,TANet,32,1,fp16 False cudnn False fuse_conv_bn False,37,37,v100
+PyTorch,I3D_r50,32,1,fp16 False cudnn False fuse_conv_bn False,27,27,v100
+PyTorch,SlowOnly_r50,32,1,fp16 False cudnn False fuse_conv_bn False,58,58,v100
+PyTorch,SlowFast_r50,32,1,fp16 False cudnn False fuse_conv_bn False,34,34,v100
+PyTorch,X3D,32,1,fp16 False cudnn False fuse_conv_bn False,95,95,v100
+PyTorch,CSN_r152,32,1,fp16 False cudnn False fuse_conv_bn False,172,172,v100
+PyTorch,2Plus1d_r34,32,1,fp16 False cudnn False fuse_conv_bn False,61,61,v100
+ONNX,I3D_r50_32f,32,1,,21,21,v100
+ONNX,CSN_r152_32f,32,1,,128,128,v100
+ONNX,2Plus1d_r34_32f,32,1,,63,63,v100
+ONNX,SlowOnly_r50_32f,32,1,,54,54,v100
+ONNX,SlowFast_r50_32f,32,1,,25,25,v100
+ONNX,X3D_32f,32,1,,68,68,v100
+ONNX,TSN_r50_32f,32,1,,38,38,v100
+ONNX,TSM_r50_32f,32,1,,44,44,v100
+ONNX,TSM_MobileNetV2_32f,32,1,,13,13,v100
+ONNX,TANet_32f,32,1,,44,44,v100
+PyTorch,TSN_r50,16,1,fp16 False cudnn False fuse_conv_bn False,17,17,v100
+PyTorch,TSM_MobileNetV2,16,1,fp16 False cudnn False fuse_conv_bn False,10,10,v100
+PyTorch,TSM_r50,16,1,fp16 False cudnn False fuse_conv_bn False,19,19,v100
+PyTorch,TIN_r50,16,1,fp16 False cudnn False fuse_conv_bn False,30,30,v100
+PyTorch,TANet,16,1,fp16 False cudnn False fuse_conv_bn False,21,21,v100
+PyTorch,I3D_r50,16,1,fp16 False cudnn False fuse_conv_bn False,23,23,v100
+PyTorch,SlowOnly_r50,16,1,fp16 False cudnn False fuse_conv_bn False,38,38,v100
+PyTorch,SlowFast_r50,16,1,fp16 False cudnn False fuse_conv_bn False,28,28,v100
+PyTorch,X3D,16,1,fp16 False cudnn False fuse_conv_bn False,93,93,v100
+PyTorch,CSN_r152,16,1,fp16 False cudnn False fuse_conv_bn False,169,169,v100
+PyTorch,2Plus1d_r34,16,1,fp16 False cudnn False fuse_conv_bn False,41,41,v100
+ONNX,I3D_r50_16f,16,1,,16,16,v100
+ONNX,CSN_r152_16f,16,1,,112,112,v100
+ONNX,2Plus1d_r34_16f,16,1,,39,39,v100
+ONNX,SlowOnly_r50_16f,16,1,,30,30,v100
+ONNX,SlowFast_r50_16f,16,1,,18,18,v100
+ONNX,X3D_16f,16,1,,55,55,v100
+ONNX,TSN_r50_16f,16,1,,20,20,v100
+ONNX,TSM_r50_16f,16,1,,24,24,v100
+ONNX,TSM_MobileNetV2_16f,16,1,,8,8,v100
+ONNX,TANet_16f,16,1,,24,24,v100
+PyTorch,TSN_r50,8,1,fp16 False cudnn False fuse_conv_bn False,10,10,v100
+PyTorch,TSM_MobileNetV2,8,1,fp16 False cudnn False fuse_conv_bn False,10,10,v100
+PyTorch,TSM_r50,8,1,fp16 False cudnn False fuse_conv_bn False,13,13,v100
+PyTorch,TIN_r50,8,1,fp16 False cudnn False fuse_conv_bn False,30,30,v100
+PyTorch,TANet,8,1,fp16 False cudnn False fuse_conv_bn False,19,19,v100
+PyTorch,I3D_r50,8,1,fp16 False cudnn False fuse_conv_bn False,21,21,v100
+PyTorch,SlowOnly_r50,8,1,fp16 False cudnn False fuse_conv_bn False,28,28,v100
+PyTorch,SlowFast_r50,8,1,fp16 False cudnn False fuse_conv_bn False,28,28,v100
+PyTorch,X3D,8,1,fp16 False cudnn False fuse_conv_bn False,92,92,v100
+PyTorch,CSN_r152,8,1,fp16 False cudnn False fuse_conv_bn False,169,169,v100
+PyTorch,2Plus1d_r34,8,1,fp16 False cudnn False fuse_conv_bn False,32,32,v100
+ONNX,I3D_r50_8f,8,1,,14,14,v100
+ONNX,CSN_r152_8f,8,1,,102,102,v100
+ONNX,2Plus1d_r34_8f,8,1,,28,28,v100
+ONNX,SlowOnly_r50_8f,8,1,,18,18,v100
+ONNX,SlowFast_r50_8f,8,1,,16,16,v100
+ONNX,X3D_8f,8,1,,50,50,v100
+ONNX,TSN_r50_8f,8,1,,12,12,v100
+ONNX,TSM_r50_8f,8,1,,14,14,v100
+ONNX,TSM_MobileNetV2_8f,8,1,,5,5,v100
+ONNX,TANet_8f,8,1,,15,15,v100
+PyTorch,TSN_r50,32,1,fp16 False cudnn False fuse_conv_bn False,258,258,agx
+PyTorch,TSM_MobileNetV2,32,1,fp16 False cudnn False fuse_conv_bn False,81,81,agx
+PyTorch,TSM_r50,32,1,fp16 False cudnn False fuse_conv_bn False,278,278,agx
+PyTorch,TIN_r50,32,1,fp16 False cudnn False fuse_conv_bn False,561,561,agx
+PyTorch,TANet,32,1,fp16 False cudnn False fuse_conv_bn False,429,429,agx
+PyTorch,I3D_r50,32,1,fp16 False cudnn False fuse_conv_bn False,128,128,agx
+PyTorch,SlowOnly_r50,32,1,fp16 False cudnn False fuse_conv_bn False,576,576,agx
+PyTorch,SlowFast_r50,32,1,fp16 False cudnn False fuse_conv_bn False,150,150,agx
+PyTorch,X3D,32,1,fp16 False cudnn False fuse_conv_bn False,415,415,agx
+PyTorch,CSN_r152,32,1,fp16 False cudnn False fuse_conv_bn False,584,584,agx
+PyTorch,2Plus1d_r34,32,1,fp16 False cudnn False fuse_conv_bn False,539,539,agx
+ONNX,I3D_r50_32f,32,1,,131,131,agx
+ONNX,CSN_r152_32f,32,1,,586,586,agx
+ONNX,2Plus1d_r34_32f,32,1,,580,580,agx
+ONNX,SlowOnly_r50_32f,32,1,,579,579,agx
+PyTorch,TSN_r50,16,1,fp16 False cudnn False fuse_conv_bn False,134,134,agx
+PyTorch,TSM_MobileNetV2,16,1,fp16 False cudnn False fuse_conv_bn False,41,41,agx
+PyTorch,TSM_r50,16,1,fp16 False cudnn False fuse_conv_bn False,145,145,agx
+PyTorch,TIN_r50,16,1,fp16 False cudnn False fuse_conv_bn False,218,218,agx
+PyTorch,TANet,16,1,fp16 False cudnn False fuse_conv_bn False,165,165,agx
+PyTorch,I3D_r50,16,1,fp16 False cudnn False fuse_conv_bn False,68,68,agx
+PyTorch,SlowOnly_r50,16,1,fp16 False cudnn False fuse_conv_bn False,301,301,agx
+PyTorch,SlowFast_r50,16,1,fp16 False cudnn False fuse_conv_bn False,81,81,agx
+PyTorch,X3D,16,1,fp16 False cudnn False fuse_conv_bn False,212,212,agx
+PyTorch,CSN_r152,16,1,fp16 False cudnn False fuse_conv_bn False,303,303,agx
+PyTorch,2Plus1d_r34,16,1,fp16 False cudnn False fuse_conv_bn False,278,278,agx
+PyTorch,TSN_r50,8,1,fp16 False cudnn False fuse_conv_bn False,80,80,agx
+PyTorch,TSM_MobileNetV2,8,1,fp16 False cudnn False fuse_conv_bn False,23,23,agx
+PyTorch,TSM_r50,8,1,fp16 False cudnn False fuse_conv_bn False,86,86,agx
+PyTorch,TIN_r50,8,1,fp16 False cudnn False fuse_conv_bn False,104,104,agx
+PyTorch,TANet,8,1,fp16 False cudnn False fuse_conv_bn False,100,100,agx
+PyTorch,I3D_r50,8,1,fp16 False cudnn False fuse_conv_bn False,37,37,agx
+PyTorch,SlowOnly_r50,8,1,fp16 False cudnn False fuse_conv_bn False,160,160,agx
+PyTorch,SlowFast_r50,8,1,fp16 False cudnn False fuse_conv_bn False,45,45,agx
+PyTorch,X3D,8,1,fp16 False cudnn False fuse_conv_bn False,112,112,agx
+PyTorch,CSN_r152,8,1,fp16 False cudnn False fuse_conv_bn False,163,163,agx
+PyTorch,2Plus1d_r34,8,1,fp16 False cudnn False fuse_conv_bn False,146,146,agx
