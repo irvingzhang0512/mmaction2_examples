@@ -49,7 +49,8 @@ def test_2d_pytorch_models(
             warmup=warm_up,
             iterations=iterations,
         ).inference()
-        _write_to_local(result_file_path, inference_result, info)
+        if result_file_path is not None:
+            _write_to_local(result_file_path, inference_result, info)
 
 
 def test_3d_pytorch_models(
@@ -153,12 +154,13 @@ def test_frames(num_frames, result_file_name, info, warmup, iterations):
         info=info)
     test_3d_onnx_models(
         onnx_files=(
-            f'../data/onnx-{num_frames}/i3d_res.onnx',
-            f'../data/onnx-{num_frames}/r2plus1d_res.onnx',
-            f'../data/onnx-{num_frames}/slowonly_res.onnx',
-            f'../data/onnx-{num_frames}/slowfast_res.onnx',
-            f'../data/onnx-{num_frames}/x3d.onnx',
-            # f'../data/onnx2-{num_frames}/tpn_slowonly.onnx',
+            f'../data/onnx/I3D_r50_{num_frames}f.onnx',
+            f'../data/onnx/CSN_r152_{num_frames}f.onnx',
+            f'../data/onnx/2Plus1d_r34_{num_frames}f.onnx',
+            f'../data/onnx/SlowOnly_r50_{num_frames}f.onnx',
+            f'../data/onnx/SlowFast_r50_{num_frames}f.onnx',
+            f'../data/onnx/X3D_{num_frames}f.onnx',
+            # f'../data/onnx/SlowOnly_r50_TPN_{num_frames}f.onnx',
         ),
         input_shape_3d=input_shape_3d,
         warm_up=warmup,
@@ -166,10 +168,12 @@ def test_frames(num_frames, result_file_name, info, warmup, iterations):
         result_file_path=result_file_name,
         info=info)
     test_2d_onnx_models(
-        onnx_files=(f'../data/onnx-{num_frames}/tsn_res.onnx',
-                    f'../data/onnx-{num_frames}/tsm_mobilenet_v2.onnx',
-                    f'../data/onnx-{num_frames}/tsm_res.onnx',
-                    f'../data/onnx-{num_frames}/tam_res.onnx'),
+        onnx_files=(
+            f'../data/onnx/TSN_r50_{num_frames}f.onnx',
+            f'../data/onnx/TSM_r50_{num_frames}f.onnx',
+            f'../data/onnx/TSM_MobileNetV2_{num_frames}f.onnx',
+            f'../data/onnx/TANet_{num_frames}f.onnx',
+        ),
         input_shape_2d=input_shape_2d,
         warm_up=warmup,
         iterations=iterations,
@@ -178,7 +182,7 @@ def test_frames(num_frames, result_file_name, info, warmup, iterations):
 
 
 if __name__ == '__main__':
-    info = '1080ti'
+    info = 'v100'
     result_file_name = "result.txt"
     warmup = 100
     iterations = 2000

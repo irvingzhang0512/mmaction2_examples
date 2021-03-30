@@ -9,7 +9,7 @@ def convert_2d_recognizers(onnx_models_path, input_shape):
         'tsn_res',
         'tsm_res',
         'tsm_mobilenet_v2',
-        'tam_res',
+        # 'tam_res',
         # 'tin_res',
         # 'tpn_tsm_res',
     ]
@@ -22,7 +22,8 @@ def convert_2d_recognizers(onnx_models_path, input_shape):
             model_config = build_mmaction2_config(
                 model_type, num_segments=input_shape[1])
         model = MMAction2Model(model_config)
-        onnx_file_name = model_type + ".onnx"
+        onnx_file_name = f'{model.model_name}_{input_shape[1]}f.onnx'
+        print(onnx_file_name)
         onnx_path = os.path.join(onnx_models_path, onnx_file_name)
         model.save_onnx(onnx_path, input_shape)
 
@@ -41,10 +42,10 @@ def convert_3d_recognizers(onnx_models_path, input_shape):
 
     for model_type in model_types:
         # build model
-        print(model_type)
         model_config = build_mmaction2_config(model_type)
         model = MMAction2Model(model_config)
-        onnx_file_name = model_type + ".onnx"
+        onnx_file_name = f'{model.model_name}_{input_shape[3]}f.onnx'
+        print(onnx_file_name)
         onnx_path = os.path.join(onnx_models_path, onnx_file_name)
         model.save_onnx(onnx_path, input_shape)
 
@@ -55,28 +56,22 @@ def convert(cfg, ckpt, onnx_path, input_shape):
 
 
 if __name__ == '__main__':
-    onnx_models_path = "../data/onnx-32"
+    onnx_models_path = "../data/onnx"
     if not os.path.exists(onnx_models_path):
         os.makedirs(onnx_models_path)
-    input_shape_3d = (1, 1, 3, 32, 224, 224)
-    convert_3d_recognizers(onnx_models_path, input_shape_3d)
+
+    # input_shape_3d = (1, 1, 3, 32, 224, 224)
+    # convert_3d_recognizers(onnx_models_path, input_shape_3d)
+    # input_shape_3d = (1, 1, 3, 16, 224, 224)
+    # convert_3d_recognizers(onnx_models_path, input_shape_3d)
+    # input_shape_3d = (1, 1, 3, 8, 224, 224)
+    # convert_3d_recognizers(onnx_models_path, input_shape_3d)
+
     input_shape_2d = (1, 32, 3, 224, 224)
     convert_2d_recognizers(onnx_models_path, input_shape_2d)
-
-    onnx_models_path = "../data/onnx-16"
-    if not os.path.exists(onnx_models_path):
-        os.makedirs(onnx_models_path)
-    input_shape_3d = (1, 1, 3, 16, 224, 224)
-    convert_3d_recognizers(onnx_models_path, input_shape_3d)
-    input_shape_2d = (1, 16, 3, 224, 224)
-    convert_2d_recognizers(onnx_models_path, input_shape_2d)
-
-    onnx_models_path = "../data/onnx-8"
-    if not os.path.exists(onnx_models_path):
-        os.makedirs(onnx_models_path)
-    input_shape_3d = (1, 1, 3, 8, 224, 224)
-    convert_3d_recognizers(onnx_models_path, input_shape_3d)
     input_shape_2d = (1, 8, 3, 224, 224)
+    convert_2d_recognizers(onnx_models_path, input_shape_2d)
+    input_shape_2d = (1, 16, 3, 224, 224)
     convert_2d_recognizers(onnx_models_path, input_shape_2d)
 
     # cfg = "/ssd01/zhangyiyang/mmaction2_github/configs/recognition/tsm/tsm_r50_1x1x8_50e_sthv1_rgb.py"  # noqa

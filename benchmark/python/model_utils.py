@@ -135,6 +135,58 @@ class OnnxModel(BaseModel):
         return ""
 
 
+def _mmaction2_config_to_model_name(config):
+    assert isinstance(config, dict)
+    assert config['type'] in ['Recognizer2D', 'Recognizer3D']
+
+    backbone = config['backbone']['type']
+    neck = config['neck']['type'] if config.get('neck') else None
+
+    if config['type'] == 'Recognizer2D':
+        model_names = ['TSM', 'TIN', 'TANet']
+
+        name = None
+        base_backbone = ""
+        for model_name in model_names:
+            if model_name in backbone:
+                name = model_name
+                base_backbone = backbone.replace(model_name, "")
+                break
+        if name is None:
+            name = 'TSN'
+
+        if 'ResNet' in backbone:
+            name = f'{name}_r{config["backbone"]["depth"]}'
+        elif len(base_backbone) > 0:
+            name = f'{name}_{base_backbone}'
+
+    else:
+        model_names = ['SlowOnly', 'SlowFast', 'CSN', 'X3D', '2Plus1d']
+
+        name = None
+        base_backbone = ""
+        for model_name in model_names:
+            if model_name in backbone:
+                name = model_name
+                base_backbone = backbone.replace(model_name, "")
+                break
+        if name is None:
+            name = 'I3D'
+
+        if 'ResNet' in backbone:
+            depth = config["backbone"]["depth"] \
+                if config["backbone"].get("depth") else \
+                config["backbone"]["slow_pathway"]["depth"]  # slowfast
+            name = f'{name}_r{depth}'
+        elif len(base_backbone) > 0:
+            name = f'{name}_{base_backbone}'
+
+    if neck is not None:
+        name = f'{name}_{neck}'
+
+    return name
+
+
 class MMAction2Model(BaseModel):
 
     def __init__(self,
@@ -149,21 +201,15 @@ class MMAction2Model(BaseModel):
         self.enable_fuse_conv_bn = enable_fuse_conv_bn
 
         if isinstance(config, str):
-            # get model name
-            self._model_name = os.path.basename(config)
-            self._model_name = self._model_name[:self._model_name.rfind(".")]
-
             cfg = Config.fromfile(config)
             cfg.model.backbone.pretrained = None
+            self._model_name = _mmaction2_config_to_model_name(cfg.model)
             self.model = mmaction2_build_model(
                 cfg.model, train_cfg=None, test_cfg=cfg.get('test_cfg'))
         elif isinstance(config, dict):
             self.model = mmaction2_build_model(config, None, None)
             # get model name
-            self._model_name = (
-                f"{config['type']}_{config['backbone']['type']}_{config['neck']['type']}" # noqa
-                if config.get("neck") else
-                f"{config['type']}_{config['backbone']['type']}")
+            self._model_name = _mmaction2_config_to_model_name(config)
         else:
             raise ValueError({f"Unknown config {config}"})
 
@@ -200,7 +246,6 @@ class MMAction2Model(BaseModel):
                 'Please implement the forward method for exporting.')
 
         input_tensor = torch.randn(*input_shape)
-        print(input_shape, input_tensor.size())
 
         torch.onnx.export(
             self.model,
