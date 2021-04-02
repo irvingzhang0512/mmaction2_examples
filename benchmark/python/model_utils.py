@@ -17,7 +17,8 @@ except ImportError:
 
 try:
     import tensorrt as trt
-    from pycuda import cuda
+    import pycuda.driver as cuda
+    import pycuda.autoinit  # noqa
 except ImportError:
     warnings.warn("PyCUDA or TensorRT is not available.")
 
@@ -53,6 +54,8 @@ def _convert_batchnorm(module):
 def build_model(model_type, **kwargs):
     if model_type == 'onnx':
         return OnnxModel(**kwargs)
+    if model_type == 'tensorrt':
+        return TensorRTModel(**kwargs)
     elif model_type == 'mmaction2':
         return MMAction2Model(**kwargs)
     raise ValueError(f"Unknown model type {model_type}")
@@ -282,45 +285,61 @@ class TensorRTModel:
         self._model_name = os.path.basename(trt_path)
         self._model_name = self._model_name[:self._model_name.rfind(".")]
 
+        # create engine
         self.trt_path = trt_path
         self.logger = trt.Logger()
         self.runtime = trt.Runtime(self.logger)
         with open(trt_path, "rb") as f:
             self.engine = self.runtime.deserialize_cuda_engine(f.read())
+
+        # create context and buffer
         self.context = self.engine.create_execution_context()
         self.stream = cuda.Stream()
+        bindings = []
+        host_input = device_input = host_output = device_output = None
+
+        for binding in self.engine:
+            binding_idx = self.engine.get_binding_index(binding)
+            print(f"binding name {binding}, idx {binding_idx}")
+            shape = trt.volume(self.context.get_binding_shape(binding_idx))
+            dtype = trt.nptype(self.engine.get_binding_dtype(binding))
+            if self.engine.binding_is_input(binding):
+                print(shape)
+                host_input = np.empty(shape, dtype=np.float32)
+                device_input = cuda.mem_alloc(host_input.nbytes)
+                bindings.append(int(device_input))
+            else:
+                host_output = cuda.pagelocked_empty(shape, dtype)
+                device_output = cuda.mem_alloc(host_output.nbytes)
+                bindings.append(int(device_output))
+
+        assert device_input is not None
+        assert device_output is not None
+        assert len(bindings) == 2
+
+        self.bindings = bindings
+        self.device_input = device_input
+        self.host_input = host_input
+        self.device_output = device_output
+        self.host_output = host_output
 
     def inference(self, inputs):
-        import pycuda.driver as cuda
-        input_buffer, input_memory, output_buffer, output_memory, bindings = inputs  # noqa
-        cuda.memcpy_htod_async(input_memory, input_buffer, self.stream)
+        # 这里实际不使用 inputs
+        cuda.memcpy_htod_async(self.device_input, self.host_input, self.stream)
         self.context.execute_async_v2(
-            bindings=bindings, stream_handle=self.stream.handle)
-        cuda.memcpy_dtoh_async(output_buffer, output_memory, self.stream)
+            bindings=self.bindings, stream_handle=self.stream.handle)
+        cuda.memcpy_dtoh_async(self.host_output, self.device_output,
+                               self.stream)
         self.stream.synchronize()
+        return self.host_output
 
     def print_model_info(self):
         print(f"TensorRT model: {self.trt_path}")
 
     def build_random_inputs(self, fp16, input_shape):
-
-        bindings = []
-        input_image = np.random.rand(*input_shape)
-        input_buffer = np.ascontiguousarray(input_image)
-
-        for binding in self.engine:
-            binding_idx = self.engine.get_binding_index(binding)
-            size = trt.volume(self.context.get_binding_shape(binding_idx))
-            dtype = trt.nptype(self.engine.get_binding_dtype(binding))
-            if self.engine.binding_is_input(binding):
-                input_memory = cuda.mem_alloc(input_image.nbytes)
-                bindings.append(int(input_memory))
-            else:
-                output_buffer = cuda.pagelocked_empty(size, dtype)
-                output_memory = cuda.mem_alloc(output_buffer.nbytes)
-                bindings.append(int(output_memory))
-
-        return input_buffer, input_memory, output_buffer, output_memory, bindings  # noqa
+        inputs = np.random.rand(*input_shape).astype(np.float32).ravel()
+        np.copyto(self.host_input, inputs)
+        return inputs
 
     @property
     def model_name(self):

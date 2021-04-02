@@ -29,7 +29,7 @@ if __name__ == '__main__':
     # mmaction2_input_shape = (1, 1, 3, 32, 224, 224)
     # test_mmaction2_model(mmaction2_config, mmaction2_ckpt_path,
     #                      mmaction2_input_shape)
-    
-    trt_path = "/ssd/zhangyiyang/mmaction2/examples/benchmark/data/tensorrt/i3d_res.trt" # noqa
+
+    trt_path = "/ssd01/zhangyiyang/mmaction2_github/examples/benchmark/data/tensorrt/i3d_res.trt"  # noqa
     trt_input_shape = (1, 1, 3, 32, 224, 224)
     test_tensorrt(trt_path, trt_input_shape)

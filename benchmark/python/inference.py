@@ -1,7 +1,11 @@
+import warnings
 from inference_utils import DoInference
 
 
 def _write_to_local(file_path, inference_result, info):
+    if file_path is None:
+        warnings.warn("Output file path is None.")
+        return
     keys = [
         'model_type', 'model_name', 'num_segments', 'batch_size', 'comments',
         'time_per_batch', 'time_per_sample'
@@ -135,6 +139,42 @@ def test_3d_onnx_models(
         _write_to_local(result_file_path, inference_result, info)
 
 
+def test_3d_tensorrt_engines(
+        tensorrt_engines=('../data/tensorrt/CSN_r152_32f_fp16.trt', ),
+        warm_up=10,
+        iterations=1000,
+        input_shape_3d=(1, 1, 3, 32, 224, 224),
+        result_file_path=None,
+        info=None):
+    for tensorrt_engine in tensorrt_engines:
+        inference_result = DoInference(
+            model_type="tensorrt",
+            model_args=dict(trt_path=tensorrt_engine),
+            input_shape=input_shape_3d,
+            warmup=warm_up,
+            iterations=iterations,
+        ).inference()
+        _write_to_local(result_file_path, inference_result, info)
+
+
+def test_2d_tensorrt_engines(
+        tensorrt_engines=('../data/tensorrt/tsn_r50_sthv1.trt', ),
+        warm_up=10,
+        iterations=1000,
+        input_shape_3d=(1, 8, 3, 224, 224),
+        result_file_path=None,
+        info=None):
+    for tensorrt_engine in tensorrt_engines:
+        inference_result = DoInference(
+            model_type="tensorrt",
+            model_args=dict(trt_path=tensorrt_engine),
+            input_shape=input_shape_3d,
+            warmup=warm_up,
+            iterations=iterations,
+        ).inference()
+        _write_to_local(result_file_path, inference_result, info)
+
+
 def test_frames(num_frames, result_file_name, info, warmup, iterations):
     input_shape_3d = (1, 1, 3, num_frames, 224, 224)
     input_shape_2d = (1, num_frames, 3, 224, 224)
@@ -175,6 +215,21 @@ def test_frames(num_frames, result_file_name, info, warmup, iterations):
             f'../data/onnx/TANet_{num_frames}f.onnx',
         ),
         input_shape_2d=input_shape_2d,
+        warm_up=warmup,
+        iterations=iterations,
+        result_file_path=result_file_name,
+        info=info)
+
+    test_2d_tensorrt_engines(
+        tensorrt_engines=('../data/tensorrt/CSN_r152_32f_fp16.trt', ),
+        input_shape_2d=input_shape_2d,
+        warm_up=warmup,
+        iterations=iterations,
+        result_file_path=result_file_name,
+        info=info)
+    test_3d_tensorrt_engines(
+        tensorrt_engines=('../data/tensorrt/tsn_r50_sthv1.trt', ),
+        input_shape_3d=input_shape_3d,
         warm_up=warmup,
         iterations=iterations,
         result_file_path=result_file_name,
