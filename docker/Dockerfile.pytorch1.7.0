@@ -1,0 +1,67 @@
+ARG PYTORCH="1.7.0"
+ARG CUDA="11.0"
+ARG CUDNN="8"
+
+FROM pytorch/pytorch:${PYTORCH}-cuda${CUDA}-cudnn${CUDNN}-devel
+
+# 设置国内镜像
+
+# apt ubunt 18.04 阿里源 & pip 阿里源
+RUN mv /etc/apt/sources.list /etc/apt/sources.list.bak && \
+    echo "deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic main restricted universe multiverse" > /etc/apt/sources.list && \
+    echo "deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-security main restricted universe multiverse" >> /etc/apt/sources.list && \
+    echo "deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-updates main restricted universe multiverse" >> /etc/apt/sources.list && \
+    echo "deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-proposed main restricted universe multiverse" >> /etc/apt/sources.list && \
+    echo "deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-backports main restricted universe multiverse" >> /etc/apt/sources.list && \
+    echo "deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic main restricted universe multiverse" >> /etc/apt/sources.list && \
+    echo "deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-security main restricted universe multiverse" >> /etc/apt/sources.list && \
+    echo "deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-updates main restricted universe multiverse" >> /etc/apt/sources.list && \
+    echo "deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-proposed main restricted universe multiverse" >> /etc/apt/sources.list && \
+    echo "deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-backports main restricted universe multiverse" >> /etc/apt/sources.list
+
+RUN mkdir /root/.pip/ && \
+    echo "[global]" > /root/.pip/pip.conf && \
+    echo "index-url = http://mirrors.aliyun.com/pypi/simple/" >> /root/.pip/pip.conf && \
+    echo "[install]" >> /root/.pip/pip.conf && \
+    echo "trusted-host=mirrors.aliyun.com" >> /root/.pip/pip.conf
+
+ENV TORCH_CUDA_ARCH_LIST="6.0 6.1 7.0+PTX"
+ENV TORCH_NVCC_FLAGS="-Xfatbin -compress-all"
+ENV CMAKE_PREFIX_PATH="$(dirname $(which conda))/../"
+
+
+# 设置 ssh 环境
+RUN apt-get update && apt-get install -y openssh-server \
+    && mkdir -p /var/run/sshd \
+    && sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config \
+    && sed -i 's/#PermitRootLogin yes/PermitRootLogin yes/' /etc/ssh/sshd_config \
+    && sed -i 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' /etc/pam.d/sshd \
+    && echo "root:123.com" | chpasswd
+
+# 启动容器后执行的命令，不会覆盖 docker run 中的命令
+# 例如：docker run -it -d -p 8022:22 --name container_name --gpus all image_name /bin/bash
+# ENTRYPOINT service ssh start && /bin/bash
+
+# CMD 会被 docker run 命令中的 COMMAND 覆盖
+# 所以，如果使用了下面的选项，则启动容器时不能指定命令
+# 例如：docker run -d -p 8022:22 --name container_name --gpus all image_name
+CMD ["/usr/sbin/sshd", "-D"]
+
+EXPOSE 22
+
+RUN apt-get update && apt-get install -y git ninja-build libglib2.0-0 libsm6 libxrender-dev libxext6 ffmpeg \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install mmcv-full
+RUN pip install mmcv-full==latest+torch1.7.0+cu110 -f https://download.openmmlab.com/mmcv/dist/index.html
+
+# Install MMAction2
+RUN conda clean --all && \
+    git clone https://gitee.com/irving512/mmaction2.git /mmaction2 && \
+    mkdir -p /mmaction2/data
+WORKDIR /mmaction2
+ENV FORCE_CUDA="1"
+RUN pip install cython --no-cache-dir && \
+    pip install -r requirements.txt && \
+    pip install --no-cache-dir -e .
